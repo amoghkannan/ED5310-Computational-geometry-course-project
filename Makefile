@@ -16,7 +16,7 @@ buildrunplot:
 	g++ ${DEFAULTFLAGS} -o sim.exe main.o eikonal.o utils.o
 	mv sim.exe bin/
 	mv *.o  Modules/
-	bin/sim.exe 2.0 8   #Domain size and maximum depth allowable for the tree 
+	bin/sim.exe 2.0 8 1  #Domain size,maximum depth,number of bodies
 	python3 ib_plotter.py
 	#python3 quad_plotter.py
 
