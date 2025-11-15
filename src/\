@@ -1,0 +1,40 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<iostream>
+#include<fstream>
+#include"utils.h"
+
+char ibfile_name[]="ib.dat"; 
+int num_iblines;
+int N;
+int maxDepth;
+var_t box_size;
+var_t delta;
+
+int main(int argc, char**argv){
+
+        box_size=(var_t)std::stof(argv[1]);
+        maxDepth=std::atoi(argv[2]);
+        N=std::pow(2,maxDepth)+1; 
+        delta=box_size/std::pow(2,maxDepth);
+        bool* frozen = new bool[N*N];
+        var_t* distances = new var_t[N*N];
+
+        std::ifstream ibfile(ibfile_name);
+        ibfile>>num_iblines;
+
+        struct line iblines[num_iblines];
+
+        for(int i=0;i<num_iblines;i++){
+                ibfile>>iblines[i].st[0]>>iblines[i].st[1]>>iblines[i].en[0]>>iblines[i].en[1]>>\
+                iblines[i].normal[0]>>iblines[i].normal[1];
+        }
+
+        Quadtree qt(Box2(0.0f,0.0f,box_size),0);
+        //qt.build(iblines,frozen,distances);
+
+        //Write out tree partitions and then free heap-allocated memory
+        qt.write(qt);
+        write_grid(N,delta,box_size);
+        qt.delete_tree(qt);
+}
