@@ -4,6 +4,8 @@
 #include<fstream>
 #include<vector>
 #include<iostream>
+#include<omp.h>
+#include<array>
 
 #define SMALL 1E-14
 #define LARGE 1E10
@@ -55,4 +57,4 @@ struct Quadtree{
 
 //---------Grid management-------------
 void write_grid();
-void write_soln(var_t distances[],var_t laplacian[],bool frozen[]);
+void write_soln(var_t distances[],bool filtered_laplacian[],bool frozen[]);

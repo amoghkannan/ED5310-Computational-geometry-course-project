@@ -39,14 +39,16 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct 
     var_t r = b.size/2.0 + eps;
     std::pair<bool,var_t> ans;
     ans.first=false;
-    ans.second=LARGE;
-   
+    var_t dummy=LARGE;
+  
     for(int i=0;i<num_iblines;i++){
-        ans.second=std::min(ans.second,pointToSegmentDistance(b.x,b.y,poly[i])); 
-        if(ans.second<= r){
-                ans.first=true;
-        }
+        dummy=std::min(dummy,pointToSegmentDistance(b.x,b.y,poly[i])); 
     }
+
+    ans.second=dummy;
+
+    if(ans.second<=r) ans.first=true;
+
     return ans;
 }
 
@@ -120,7 +122,7 @@ void write_grid(){
         gridfile.close();
 }
 
-void write_soln(var_t distances[], var_t laplacian[],bool frozen[]){
+void write_soln(var_t distances[], bool filtered_laplacian[],bool frozen[]){
 
         std::ofstream solnfile("soln.dat");
         solnfile<<N<<" "<<N<<std::endl;
@@ -133,7 +135,7 @@ void write_soln(var_t distances[], var_t laplacian[],bool frozen[]){
 
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
-                        solnfile<<laplacian[i+j*(N-1)]<<std::endl;
+                        solnfile<<filtered_laplacian[i+j*(N-1)]<<std::endl;
                 }
         }
 

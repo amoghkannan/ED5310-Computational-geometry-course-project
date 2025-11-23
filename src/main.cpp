@@ -13,7 +13,6 @@ var_t box_size;
 var_t delta;
 
 int main(int argc, char**argv){
-        
         box_size=(var_t)std::stof(argv[1]);
         maxDepth=std::atoi(argv[2]);
         int n_bodies;
@@ -23,7 +22,9 @@ int main(int argc, char**argv){
         bool frozen[(N-1)*(N-1)];
         var_t distances[(N-1)*(N-1)]; //Distance array used for each object
         var_t laplacian[(N-1)*(N-1)];
+        bool filtered_laplacian[(N-1)*(N-1)];
 
+        #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
                         distances[i+j*(N-1)]=LARGE;
@@ -61,6 +62,7 @@ int main(int argc, char**argv){
         //For the walls
 
         //Upper wall
+        #pragma omp parallel for collapse(2)
         for(int j=N-2;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
                         distances[i+j*(N-1)]=0.5*delta;
@@ -69,6 +71,7 @@ int main(int argc, char**argv){
         }
 
         //Lower wall
+        #pragma omp parallel for collapse(2)
         for(int j=0;j<1;j++){
                 for(int i=0;i<N-1;i++){
                         distances[i+j*(N-1)]=0.5*delta;
@@ -77,6 +80,7 @@ int main(int argc, char**argv){
         }
 
         //Left wall
+        #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<1;i++){
                         distances[i+j*(N-1)]=0.5*delta;
@@ -85,6 +89,7 @@ int main(int argc, char**argv){
         }
 
         //Right wall
+        #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
                 for(int i=N-2;i<N-1;i++){
                         distances[i+j*(N-1)]=0.5*delta;
@@ -94,14 +99,20 @@ int main(int argc, char**argv){
 
         sweep_controller(distances,frozen);
 
-        filter_medial_axis(distances,laplacian); //Get thick medial axis by filtering out points with very negative laplacian
+        compute_laplacian(distances, laplacian);
+        filter_medial_axis(laplacian, filtered_laplacian); //Get thick medial axis by filtering out points with very negative laplacian
 
-        //TODO: Need to thin the medial axis!!!!
+        //Thin medial axis
+        bool is_even=true;
+        for(int i=0; i<100;i++){
+                thin_medial_axis(filtered_laplacian,is_even);
+                is_even=!is_even;
+        }
 
         //Write out tree partitions,grid,solution and then free heap-allocated memory
         qt.write(qt);
         write_grid();
-        write_soln(distances,laplacian,frozen);
+        write_soln(distances,filtered_laplacian,frozen);
         qt.delete_tree(qt);
 }
 
