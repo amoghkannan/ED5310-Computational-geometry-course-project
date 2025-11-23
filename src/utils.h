@@ -6,7 +6,7 @@
 #include<iostream>
 
 #define SMALL 1E-14
-#define LARGE 1E50
+#define LARGE 1E10
 
 typedef double var_t;
 
@@ -34,10 +34,10 @@ struct Box2 {
 };
 
 // Distance from point (px,py) to line segment (x1,y1)-(x2,y2)
-var_t pointToSegmentDistance(var_t px,var_t py,struct line l);
+var_t pointToSegmentDistance(var_t px,var_t py,struct line& l);
 
 // Check if box intersects polygon using distance
-std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,const struct line poly[],var_t eps=0.01);
+std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct line>& poly,var_t eps=0.01);
 
 struct Quadtree{
     Box2 box;
@@ -47,7 +47,7 @@ struct Quadtree{
 
     Quadtree(Box2 b,int d=0):box(b),depth(d){}
 
-    void build(const struct line poly[],bool frozen[],var_t distances[]);
+    void build(std::vector<struct line>& poly,bool frozen[],var_t distances[]);
     void write(Quadtree& tree);
     void delete_tree(Quadtree& tree);
 

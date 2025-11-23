@@ -32,15 +32,27 @@ int main(int argc, char**argv){
         }
 
         std::ifstream ibfile(ibfile_name);
-        ibfile>>num_iblines;
+        int num_iblines_temp,ib_count;
+        num_iblines=0;
+        ib_count=0;
 
-        struct line iblines[num_iblines];
+        std::vector<struct line>iblines;
+        
+        for(int k=0;k<n_bodies;k++){
+                ibfile>>num_iblines_temp;
+                num_iblines=num_iblines+num_iblines_temp;
 
-        for(int i=0;i<num_iblines;i++){
-                ibfile>>iblines[i].st[0]>>iblines[i].st[1]>>iblines[i].en[0]>>iblines[i].en[1]>>\
-                iblines[i].normal[0]>>iblines[i].normal[1];
+                iblines.resize(num_iblines);
+
+                for(int i=0;i<num_iblines_temp;i++){
+                        ibfile>>iblines[ib_count].st[0]>>iblines[ib_count].st[1]>>iblines[ib_count].en[0]>>
+                        iblines[ib_count].en[1]>>iblines[ib_count].normal[0]>>iblines[ib_count].normal[1];
+                        iblines[ib_count].body_ID=k;
+                        ib_count=ib_count+1;
+                }
+
         }
-
+       
         //For the immersed bodies
 
         Quadtree qt(Box2(0.0f,0.0f,box_size),0);
@@ -82,7 +94,9 @@ int main(int argc, char**argv){
 
         sweep_controller(distances,frozen);
 
-        filter_medial_axis(distances,laplacian);
+        filter_medial_axis(distances,laplacian); //Get thick medial axis by filtering out points with very negative laplacian
+
+        //TODO: Need to thin the medial axis!!!!
 
         //Write out tree partitions,grid,solution and then free heap-allocated memory
         qt.write(qt);

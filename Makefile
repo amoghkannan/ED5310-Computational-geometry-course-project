@@ -1,5 +1,14 @@
-DEFAULTFLAGS=-std=c++17 -O3
-DEBUGFLAGS=-std=c++17 -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Wno-unused 
+DEFAULTFLAGS=-std=c++17 -O3 -fopenmp
+DEBUGFLAGS=-std=c++17 -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Wno-unused
+
+n_bodies=2
+domain_size=4.0
+max_depth=8
+
+default:
+	@read -p "Enter number of bodies: " n_bodies
+	@read -p "Enter domain size, centered around (0.0,0.0): " domain_size
+	@read -p "Enter maximum tree depth: " max_depth
 
 build:
 	g++ ${DEFAULTFLAGS} -c src/utils.cpp -o utils.o
@@ -9,16 +18,25 @@ build:
 	mv sim.exe bin/
 	mv *.o Modules/
 
+runplot:
+	make default
+	bin/sim.exe ${domain_size} ${max_depth} ${n_bodies}  #Domain size,maximum depth,number of bodies
+	python3 ib_plotter.py ${n_bodies} #Number of bodies
+	python3 quad_plotter.py ${n_bodies}
+	rm -rf tree.dat
+
 buildrunplot:
+	make default
 	g++ ${DEFAULTFLAGS} -c src/utils.cpp -o utils.o
 	g++ ${DEFAULTFLAGS} -c src/eikonal.cpp -o eikonal.o
 	g++ ${DEFAULTFLAGS} -c src/main.cpp -o main.o
 	g++ ${DEFAULTFLAGS} -o sim.exe main.o eikonal.o utils.o
 	mv sim.exe bin/
 	mv *.o  Modules/
-	bin/sim.exe 2.0 8 1  #Domain size,maximum depth,number of bodies
-	python3 ib_plotter.py
-	#python3 quad_plotter.py
+	bin/sim.exe ${domain_size} ${max_depth} ${n_bodies}  #Domain size,maximum depth,number of bodies
+	python3 ib_plotter.py ${n_bodies} #Number of bodies
+	python3 quad_plotter.py ${n_bodies}
+	rm -rf tree.dat
 
 debug:
 	g++ ${DEBUGFLAGS} -c src/utils.cpp -o utils.o

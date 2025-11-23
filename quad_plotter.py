@@ -3,26 +3,32 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import patches as patch
+import sys
+
+num_bodies=int(sys.argv[1])
 
 ibfile=open("ib.dat","r")
-inline=ibfile.readline().strip().split()
-num_iblines=int(inline[0])
 
-x=[]
-y=[]
+fig, ax = plt.subplots()
 
-for i in range(0,num_iblines):
+for k in range(0,num_bodies):
         inline=ibfile.readline().strip().split()
-        x.append(float(inline[0]))
-        y.append(float(inline[1]))
+        num_iblines=int(inline[0])
+
+        x=[]
+        y=[]
+
+        for i in range(0,num_iblines):
+                inline=ibfile.readline().strip().split()
+                x.append(float(inline[0]))
+                y.append(float(inline[1]))
+
+        plt.plot(x,y,'r')
 
 treefile=open("tree.dat","r")
 data=treefile.readlines()
 n=len(data)
 
-
-fig, ax = plt.subplots()
-plt.plot(x,y,'r')
 plt.xlabel("x")
 plt.ylabel("y")
 plt.title("Quadtree")

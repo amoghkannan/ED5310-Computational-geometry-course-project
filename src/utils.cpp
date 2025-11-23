@@ -20,7 +20,7 @@ var_t norm(var_t vec[]){
         return ans;
 }
 
-var_t pointToSegmentDistance(var_t px,var_t py,struct line l){
+var_t pointToSegmentDistance(var_t px,var_t py,struct line& l){
     var_t x1,y1,x2,y2;
     x1=l.st[0];
     y1=l.st[1];
@@ -35,12 +35,12 @@ var_t pointToSegmentDistance(var_t px,var_t py,struct line l){
     return sqrt((px-projx)*(px-projx)+(py-projy)*(py-projy));
 }
 
-std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,const struct line poly[],var_t eps){
+std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct line>& poly,var_t eps){
     var_t r = b.size/2.0 + eps;
     std::pair<bool,var_t> ans;
     ans.first=false;
     ans.second=LARGE;
-
+   
     for(int i=0;i<num_iblines;i++){
         ans.second=std::min(ans.second,pointToSegmentDistance(b.x,b.y,poly[i])); 
         if(ans.second<= r){
@@ -50,8 +50,8 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,const struct line p
     return ans;
 }
 
-void Quadtree:: build(const struct line poly[],bool frozen[], var_t distances[]){
-        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly);
+void Quadtree:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[]){
+        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.5*box.size);
         if(!ans.first) return; // only subdivide near boundary
         if(depth==maxDepth){ //Cell intersects polygon, and is at required resolution; fill exact distance and freeze
                 int cell_ID1,cell_ID2;

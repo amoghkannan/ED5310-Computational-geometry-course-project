@@ -1,7 +1,10 @@
 import numpy as np
 import scipy as sc
 from matplotlib import pyplot as plt
+import sys
 
+
+num_bodies=int(sys.argv[1])
 gridfile=open("grid.dat","r")
 inline=gridfile.readline().strip().split()
 N_x=int(inline[0])
@@ -16,23 +19,37 @@ for j in range(0,N_y):
         Y[i,j]=float(inline[1])
 
 ibfile=open("ib.dat","r")
-inline=ibfile.readline().strip().split()
-num_iblines=int(inline[0])
 
-ib_x=np.zeros((num_iblines+1,1))
-ib_y=np.zeros((num_iblines+1,1))
-nx=np.zeros((num_iblines+1,1))
-ny=np.zeros((num_iblines+1,1))
+ib_x_fin=[]
+ib_y_fin=[]
+nx_fin=[]
+ny_fin=[]
 
-for i in range(0,num_iblines):
+plt.figure(0)
+for k in range(0,num_bodies):
         inline=ibfile.readline().strip().split()
-        ib_x[i,0]   = float(inline[0])
-        ib_y[i,0]   = float(inline[1])
-        ib_x[i+1,0] = float(inline[2])
-        ib_y[i+1,0] = float(inline[3])
-        nx[i,0] = float(inline[4])
-        ny[i,0] = float(inline[5])
-        plt.quiver(0.5*(ib_x[i,0]+ib_x[i+1,0]),0.5*(ib_y[i,0]+ib_y[i+1,0]),nx[i,0],ny[i,0])
+        num_iblines=int(inline[0])
+        ib_x=[]
+        ib_y=[]
+        nx=[]
+        ny=[]
+        for i in range(0,num_iblines):
+                inline=ibfile.readline().strip().split()
+                ib_x.append(float(inline[0]))
+                ib_y.append(float(inline[1]))
+                ib_x.append(float(inline[2]))
+                ib_y.append(float(inline[3]))
+                nx.append(float(inline[4]))
+                ny.append(float(inline[5]))
+                plt.quiver(0.5*(ib_x[2*i]+ib_x[2*i+1]),0.5*(ib_y[2*i]+ib_y[2*i+1]),nx[i],ny[i])
+        ib_x_fin.append(ib_x)
+        ib_y_fin.append(ib_y)
+        nx_fin.append(nx)
+        ny_fin.append(ny)
+
+plt.gca().set_aspect('equal')
+plt.grid()
+plt.show()
 
 solnfile=open("soln.dat","r")
 inline=solnfile.readline().strip().split()
@@ -60,28 +77,31 @@ for j in range(0,N-1):
 X_contour=0.25*(X[0:N-1,0:N-1]+X[1:N,0:N-1]+X[0:N-1,1:N]+X[1:N,1:N])
 Y_contour=0.25*(Y[0:N-1,0:N-1]+Y[1:N,0:N-1]+Y[0:N-1,1:N]+Y[1:N,1:N])
 
-plt.figure(0);
+plt.figure(1)
 plt.plot(np.transpose(X),np.transpose(Y),'k')
 plt.contourf(X_contour,Y_contour,distances)
-plt.plot(ib_x[:,0],ib_y[:,0],'r')
+for k in range(0,num_bodies):
+        plt.plot(ib_x_fin[k],ib_y_fin[k],'k')
 plt.plot(X,Y,'k')
 plt.colorbar()
 plt.title("Distance field")
 plt.show()
 
-plt.figure(1)
+plt.figure(2)
 plt.plot(X,Y,'k')
 plt.plot(np.transpose(X),np.transpose(Y),'k')
-plt.plot(ib_x[:,0],ib_y[:,0],'r')
+for k in range(0,num_bodies):
+        plt.plot(ib_x_fin[k],ib_y_fin[k],'k')
 plt.pcolor(X_contour,Y_contour,laplacian)
 plt.colorbar()
 plt.title("Laplacian")
 plt.show()
 
-plt.figure(2)
+plt.figure(3)
 plt.plot(X,Y,'k')
 plt.plot(np.transpose(X),np.transpose(Y),'k')
-plt.plot(ib_x[:,0],ib_y[:,0],'r')
+for k in range(0,num_bodies):
+        plt.plot(ib_x_fin[k],ib_y_fin[k],'k')
 plt.pcolor(X_contour,Y_contour,frozen)
 plt.colorbar()
 plt.title("Frozen cells")
