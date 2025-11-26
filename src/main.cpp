@@ -16,9 +16,28 @@ var_t delta;
 float camX=0.0f, camY=0.0f, zoom=1.0f;
 bool dragging=false;
 double lastX, lastY;
+double sliderX=0.0;
 
 var_t laplacian_limit=-1.0;
 var_t laplacian_limit_old=laplacian_limit;
+
+bool sliderHover(double xpos, double ypos){
+        double x1, x2, y1, y2;
+        double sliderWidth=0.1*box_size;
+
+        x1=camX+(sliderX-0.5*sliderWidth)/zoom;
+        x2=camX+(sliderX+0.5*sliderWidth)/zoom;
+        y1=camY-0.95*0.5*box_size/zoom;
+        y2=camY-0.90*0.5*box_size/zoom;
+    
+        if(xpos>=x1 && xpos<=x2 && ypos>=y1 && ypos<=y2){
+                return true;
+        }
+        else{
+                return false;
+        }
+
+}
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
     zoom *= (yoffset>0?1.1f:0.9f);
@@ -36,9 +55,17 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos){
     if(dragging){
         int w,h; glfwGetFramebufferSize(window,&w,&h);
-        float dx=(xpos-lastX)/w*2.0f/zoom;
-        float dy=(lastY-ypos)/h*2.0f/zoom;
-        camX-=dx; camY-=dy;
+        float dx=(xpos-lastX)/w*box_size/zoom;
+        float dy=(lastY-ypos)/h*box_size/zoom;
+        float sliderWidth=0.1*box_size;
+        if(sliderHover(camX+xpos/w*box_size/zoom-0.5*box_size/zoom,camY-ypos/h*box_size/zoom+0.5*box_size/zoom)){
+                sliderX=sliderX+dx;
+                sliderX=std::min(-0.5*sliderWidth+0.95*0.5*box_size,std::max(sliderX,0.5*sliderWidth-0.95*0.5*box_size));
+        }
+        else{
+                camX-=dx; camY-=dy;
+        }
+
         lastX=xpos; lastY=ypos;
     }
 }
@@ -73,6 +100,30 @@ void drawGrid(bool* filtered_laplacian){
         glEnd();
 
 }
+
+void drawSlider(GLFWwindow* window){
+        int w,h; glfwGetFramebufferSize(window,&w,&h);
+        double sliderWidth=0.1*box_size;
+
+        glBegin(GL_QUADS);
+        glColor3f(1.0f,1.0f,1.0f);
+        
+        glVertex2f(camX-0.95*0.5*box_size/zoom,camY-0.95*0.5*box_size/zoom);
+        glVertex2f(camX+0.95*0.5*box_size/zoom,camY-0.95*0.5*box_size/zoom);
+        glVertex2f(camX+0.95*0.5*box_size/zoom,camY-0.90*0.5*box_size/zoom);
+        glVertex2f(camX-0.95*0.5*box_size/zoom,camY-0.90*0.5*box_size/zoom);
+     
+        glColor3f(0.23f,0.23f,0.23f);
+
+        glVertex2f(camX+(sliderX-0.5*sliderWidth)/zoom,camY-0.95*0.5*box_size/zoom);
+        glVertex2f(camX+(sliderX+0.5*sliderWidth)/zoom,camY-0.95*0.5*box_size/zoom); 
+        glVertex2f(camX+(sliderX+(0.5*sliderWidth))/zoom,camY-0.90*0.5*box_size/zoom);
+        glVertex2f(camX+(sliderX-0.5*sliderWidth)/zoom,camY-0.90*0.5*box_size/zoom);
+
+        glEnd();
+
+}
+
 
 int main(int argc, char**argv){
         if(!glfwInit()) return -1;
@@ -176,19 +227,25 @@ int main(int argc, char**argv){
 //        smooth_distance_field(distances);
 
         compute_laplacian(distances, laplacian);
-    
+        double sliderWidth=0.1*box_size;
+
         while(!glfwWindowShouldClose(win)){
-        filter_medial_axis(laplacian, filtered_laplacian,laplacian_limit); //Get thick medial axis by filtering out points with very negative laplacian
+        laplacian_limit=-pow(10.0,(8.0*sliderX+2.0*sliderWidth-2.0*0.95*box_size)/(0.95*box_size-sliderWidth));
+        if(laplacian_limit!=laplacian_limit_old){
+                filter_medial_axis(laplacian, filtered_laplacian,laplacian_limit); //Get thick medial axis by filtering out points with very negative laplacian
+                laplacian_limit_old=laplacian_limit;
+        }
         glClear(GL_COLOR_BUFFER_BIT);
         int w,h; glfwGetFramebufferSize(win,&w,&h);
         glViewport(0,0,w,h);
         glMatrixMode(GL_PROJECTION); glLoadIdentity();
         float aspect=float(w)/h;
-        glOrtho(-1.0f/aspect/zoom+camX,1.0f/aspect/zoom+camX,
-                -1.0f/zoom+camY,1.0f/zoom+camY,-1,1);
+        glOrtho(-0.5*box_size/zoom+camX,0.5*box_size/zoom+camX,
+                -0.5*box_size/zoom+camY,0.5*box_size/zoom+camY,-1,1);
         glMatrixMode(GL_MODELVIEW); glLoadIdentity();
 
         drawGrid(filtered_laplacian);
+        drawSlider(win);
         drawBoundary(iblines);
         glfwSwapBuffers(win);
         glfwPollEvents();
