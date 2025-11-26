@@ -17,6 +17,9 @@ float camX=0.0f, camY=0.0f, zoom=1.0f;
 bool dragging=false;
 double lastX, lastY;
 
+var_t laplacian_limit=-1.0;
+var_t laplacian_limit_old=laplacian_limit;
+
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
     zoom *= (yoffset>0?1.1f:0.9f);
 }
@@ -41,11 +44,34 @@ void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos){
 }
 
 void drawBoundary(std::vector<struct line>& shape){
-    glColor3f(1.0f,0.8f,0.2f); // yellow
+    glColor3f(1.0f,1.0f,1.0f);
     glLineWidth(2.0f);
-    glBegin(GL_LINE_LOOP);
-    for(auto&p:shape) glVertex2f(p.st[0],p.st[1]);
+    glBegin(GL_LINES);
+    for(auto&p:shape) {
+        glVertex2f(p.st[0],p.st[1]);
+        glVertex2f(p.en[0],p.en[1]);
+    }
     glEnd();
+}
+
+void drawGrid(bool* filtered_laplacian){
+        glBegin(GL_QUADS);
+        for(int j=0;j<N;j++){
+                for(int i=0;i<N;i++){
+                        if(filtered_laplacian[i+(N-1)*j]){
+                                glColor3f(1.0f,0.0f,0.0f);
+                        }
+                        else{
+                                glColor3f(0.0f,1.0f,0.0f);
+                        }
+                        glVertex2f(i*delta-0.5*box_size,j*delta-0.5*box_size);
+                        glVertex2f((i+1)*delta-0.5*box_size,j*delta-0.5*box_size);
+                        glVertex2f((i+1)*delta-0.5*box_size,(j+1)*delta-0.5*box_size);
+                        glVertex2f(i*delta-0.5*box_size,(j+1)*delta-0.5*box_size);
+                }
+        }
+        glEnd();
+
 }
 
 int main(int argc, char**argv){
@@ -152,7 +178,7 @@ int main(int argc, char**argv){
         compute_laplacian(distances, laplacian);
     
         while(!glfwWindowShouldClose(win)){
-        filter_medial_axis(laplacian, filtered_laplacian); //Get thick medial axis by filtering out points with very negative laplacian
+        filter_medial_axis(laplacian, filtered_laplacian,laplacian_limit); //Get thick medial axis by filtering out points with very negative laplacian
         glClear(GL_COLOR_BUFFER_BIT);
         int w,h; glfwGetFramebufferSize(win,&w,&h);
         glViewport(0,0,w,h);
@@ -162,6 +188,7 @@ int main(int argc, char**argv){
                 -1.0f/zoom+camY,1.0f/zoom+camY,-1,1);
         glMatrixMode(GL_MODELVIEW); glLoadIdentity();
 
+        drawGrid(filtered_laplacian);
         drawBoundary(iblines);
         glfwSwapBuffers(win);
         glfwPollEvents();

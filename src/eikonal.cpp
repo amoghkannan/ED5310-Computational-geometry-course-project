@@ -105,7 +105,7 @@ void compute_laplacian(var_t* distances, var_t * laplacian){
 
 }
 
-void filter_medial_axis(var_t* laplacian, bool* filtered_laplacian){
+void filter_medial_axis(var_t* laplacian, bool* filtered_laplacian, var_t laplacian_limit){
 
         #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
