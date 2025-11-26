@@ -41,17 +41,17 @@ var_t pointToSegmentDistance(var_t px,var_t py,struct line& l);
 // Check if box intersects polygon using distance
 std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct line>& poly,var_t eps=0.01);
 
-struct Quadtree{
+struct Quadtree2{
     Box2 box;
     int depth;
     bool isLeaf=true;
-    std::vector<Quadtree*> children;
+    std::vector<Quadtree2*> children;
 
-    Quadtree(Box2 b,int d=0):box(b),depth(d){}
+    Quadtree2(Box2 b,int d=0):box(b),depth(d){}
 
     void build(std::vector<struct line>& poly,bool frozen[],var_t distances[]);
-    void write(Quadtree& tree);
-    void delete_tree(Quadtree& tree);
+    void write(Quadtree2& tree);
+    void delete_tree(Quadtree2& tree);
 
 };
 

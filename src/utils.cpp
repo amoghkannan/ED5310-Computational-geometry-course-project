@@ -52,8 +52,8 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct 
     return ans;
 }
 
-void Quadtree:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[]){
-        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.5*box.size);
+void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[]){
+        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.207*box.size);
         if(!ans.first) return; // only subdivide near boundary
         if(depth==maxDepth){ //Cell intersects polygon, and is at required resolution; fill exact distance and freeze
                 int cell_ID1,cell_ID2;
@@ -73,14 +73,14 @@ void Quadtree:: build(std::vector<struct line>& poly,bool frozen[], var_t distan
         };
         
         for(int i=0;i<4;i++){
-            Quadtree* c=new Quadtree(sub[i],depth+1);
+            Quadtree2* c=new Quadtree2(sub[i],depth+1);
             c->build(poly,frozen,distances);
             children.push_back(c);
         }
         return;
 }
 
-void Quadtree::write(Quadtree& tree){
+void Quadtree2::write(Quadtree2& tree){
 
         std::fstream outfile("tree.dat",std::fstream::out | std::fstream::app);
         outfile<<tree.box.x<<" "<<tree.box.y<<" "<<tree.box.size<<std::endl;
@@ -94,7 +94,7 @@ void Quadtree::write(Quadtree& tree){
         }
 }
 
-void Quadtree::delete_tree(Quadtree& tree){
+void Quadtree2::delete_tree(Quadtree2& tree){
        
        if((tree.isLeaf)==true){
                 return;

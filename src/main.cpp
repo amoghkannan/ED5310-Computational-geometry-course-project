@@ -4,6 +4,8 @@
 #include<fstream>
 #include"utils.h"
 #include"eikonal.h"
+#include"glad.h"
+#include"glfw3.h"
 
 char ibfile_name[]="ib.dat"; 
 int num_iblines;
@@ -11,8 +13,52 @@ int N;
 int maxDepth;
 var_t box_size;
 var_t delta;
+float camX=0.0f, camY=0.0f, zoom=1.0f;
+bool dragging=false;
+double lastX, lastY;
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+    zoom *= (yoffset>0?1.1f:0.9f);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods){
+    if(button==GLFW_MOUSE_BUTTON_LEFT){
+        if(action==GLFW_PRESS){
+            dragging=true;
+            glfwGetCursorPos(window, &lastX, &lastY);
+        } else dragging=false;
+    }
+}
+
+void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos){
+    if(dragging){
+        int w,h; glfwGetFramebufferSize(window,&w,&h);
+        float dx=(xpos-lastX)/w*2.0f/zoom;
+        float dy=(lastY-ypos)/h*2.0f/zoom;
+        camX-=dx; camY-=dy;
+        lastX=xpos; lastY=ypos;
+    }
+}
+
+void drawBoundary(std::vector<struct line>& shape){
+    glColor3f(1.0f,0.8f,0.2f); // yellow
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    for(auto&p:shape) glVertex2f(p.st[0],p.st[1]);
+    glEnd();
+}
 
 int main(int argc, char**argv){
+        if(!glfwInit()) return -1;
+        GLFWwindow* win=glfwCreateWindow(800,800,"Quadtree Distance-Based",NULL,NULL);
+        if(!win){glfwTerminate();return -1;}
+        glfwMakeContextCurrent(win);
+        gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+        glfwSetScrollCallback(win, scroll_callback);
+        glfwSetMouseButtonCallback(win, mouse_button_callback);
+        glfwSetCursorPosCallback(win, cursor_pos_callback);
+
         box_size=(var_t)std::stof(argv[1]);
         maxDepth=std::atoi(argv[2]);
         int n_bodies;
@@ -56,7 +102,7 @@ int main(int argc, char**argv){
        
         //For the immersed bodies
 
-        Quadtree qt(Box2(0.0f,0.0f,box_size),0);
+        Quadtree2 qt(Box2(0.0f,0.0f,box_size),0);
         qt.build(iblines,frozen,distances);
 
         //For the walls
@@ -99,8 +145,29 @@ int main(int argc, char**argv){
 
         sweep_controller(distances,frozen);
 
+//        smooth_distance_field(distances);
+//        smooth_distance_field(distances);
+//        smooth_distance_field(distances);
+
         compute_laplacian(distances, laplacian);
+    
+        while(!glfwWindowShouldClose(win)){
         filter_medial_axis(laplacian, filtered_laplacian); //Get thick medial axis by filtering out points with very negative laplacian
+        glClear(GL_COLOR_BUFFER_BIT);
+        int w,h; glfwGetFramebufferSize(win,&w,&h);
+        glViewport(0,0,w,h);
+        glMatrixMode(GL_PROJECTION); glLoadIdentity();
+        float aspect=float(w)/h;
+        glOrtho(-1.0f/aspect/zoom+camX,1.0f/aspect/zoom+camX,
+                -1.0f/zoom+camY,1.0f/zoom+camY,-1,1);
+        glMatrixMode(GL_MODELVIEW); glLoadIdentity();
+
+        drawBoundary(iblines);
+        glfwSwapBuffers(win);
+        glfwPollEvents();
+        if(glfwGetKey(win,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(win,true);
+        };
 
         //Thin medial axis
         bool is_even=true;
@@ -114,5 +181,7 @@ int main(int argc, char**argv){
         write_grid();
         write_soln(distances,filtered_laplacian,frozen);
         qt.delete_tree(qt);
+        glfwTerminate();
+        return 0;
 }
 

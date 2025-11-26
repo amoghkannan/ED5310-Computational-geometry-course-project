@@ -56,6 +56,30 @@ void fast_sweep(var_t* distances, bool* frozen,int i_min,int i_max,int i_step,in
         }
 }
 
+void smooth_distance_field(var_t* distances){
+        var_t d_left,d_right,d_top,d_bottom,d_centre;
+        int i,j,i_left,i_right,j_top,j_bottom;
+        var_t temp;
+
+        #pragma omp parallel for collapse(2) private(i_left,i_right,j_bottom,j_top,d_left,d_right,d_bottom,d_top,d_centre)
+        for(int j=0;j<N-1;j++){
+                for(int i=0;i<N-1;i++){
+                        i_left=(i>=1)?i-1:i;
+                        i_right=(i<=N-3)?i+1:i;
+                        j_bottom=(j>=1)?j-1:j;
+                        j_top=(j<=N-3)?j+1:j;
+
+                        d_left=distances[i_left+j*(N-1)];
+                        d_right=distances[i_right+j*(N-1)];
+                        d_bottom=distances[i+j_bottom*(N-1)];
+                        d_top=distances[i+j_top*(N-1)];
+                        
+                        distances[i+(N-1)*j]=0.25*(d_left+d_right+d_top+d_bottom);
+                }
+        }
+
+}
+
 void compute_laplacian(var_t* distances, var_t * laplacian){
         var_t d_left,d_right,d_top,d_bottom,d_centre;
         int i,j,i_left,i_right,j_top,j_bottom;
