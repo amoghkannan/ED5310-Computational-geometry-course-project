@@ -2,8 +2,8 @@ DEFAULTFLAGS=-std=c++17 -O3 -fopenmp -Lsrc/opengl -Isrc/opengl
 DEBUGFLAGS=-std=c++17 -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wswitch-default -Wundef -Wno-unused
 
 n_bodies=3
-domain_size=2.0
-max_depth=8
+domain_size=0.7
+max_depth=9
 
 build:
 	g++ ${DEFAULTFLAGS} -c src/utils.cpp -o utils.o

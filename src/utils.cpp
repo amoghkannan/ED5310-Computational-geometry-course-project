@@ -53,7 +53,7 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct 
 }
 
 void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[]){
-        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.207*box.size);
+        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.5*box.size);
         if(!ans.first) return; // only subdivide near boundary
         if(depth==maxDepth){ //Cell intersects polygon, and is at required resolution; fill exact distance and freeze
                 int cell_ID1,cell_ID2;

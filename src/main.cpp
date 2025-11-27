@@ -13,17 +13,18 @@ int N;
 int maxDepth;
 var_t box_size;
 var_t delta;
-float camX=0.0f, camY=0.0f, zoom=1.0f;
+var_t camX=0.0, camY=0.0, zoom=1.0;
 bool dragging=false;
-double lastX, lastY;
-double sliderX=0.0;
+bool slider_dragging=false;
+var_t lastX, lastY;
+var_t sliderX=0.0;
 
 var_t laplacian_limit=-1.0;
 var_t laplacian_limit_old=laplacian_limit;
 
-bool sliderHover(double xpos, double ypos){
-        double x1, x2, y1, y2;
-        double sliderWidth=0.1*box_size;
+bool sliderHover(var_t xpos, var_t ypos){
+        var_t x1, x2, y1, y2;
+        var_t sliderWidth=0.1*box_size;
 
         x1=camX+(sliderX-0.5*sliderWidth)/zoom;
         x2=camX+(sliderX+0.5*sliderWidth)/zoom;
@@ -39,27 +40,34 @@ bool sliderHover(double xpos, double ypos){
 
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+void scroll_callback(GLFWwindow* window, var_t xoffset, var_t yoffset){
     zoom *= (yoffset>0?1.1f:0.9f);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods){
-    if(button==GLFW_MOUSE_BUTTON_LEFT){
+    if(button==GLFW_MOUSE_BUTTON_RIGHT){
         if(action==GLFW_PRESS){
             dragging=true;
             glfwGetCursorPos(window, &lastX, &lastY);
         } else dragging=false;
     }
+    if(button==GLFW_MOUSE_BUTTON_LEFT){
+        if(action==GLFW_PRESS){
+            slider_dragging=true;
+            glfwGetCursorPos(window, &lastX, &lastY);
+        } else slider_dragging=false;
+    }
+
 }
 
-void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos){
-    if(dragging){
+void cursor_pos_callback(GLFWwindow* window, var_t xpos, var_t ypos){
+    if(dragging || slider_dragging){
         int w,h; glfwGetFramebufferSize(window,&w,&h);
-        float dx=(xpos-lastX)/w*box_size/zoom;
-        float dy=(lastY-ypos)/h*box_size/zoom;
-        float sliderWidth=0.1*box_size;
-        if(sliderHover(camX+xpos/w*box_size/zoom-0.5*box_size/zoom,camY-ypos/h*box_size/zoom+0.5*box_size/zoom)){
-                sliderX=sliderX+dx;
+        var_t dx=(xpos-lastX)/w*box_size/zoom;
+        var_t dy=(lastY-ypos)/h*box_size/zoom;
+        var_t sliderWidth=0.1*box_size;
+        if(slider_dragging){
+                sliderX=sliderX+zoom*dx;
                 sliderX=std::min(-0.5*sliderWidth+0.95*0.5*box_size,std::max(sliderX,0.5*sliderWidth-0.95*0.5*box_size));
         }
         else{
@@ -103,7 +111,7 @@ void drawGrid(bool* filtered_laplacian){
 
 void drawSlider(GLFWwindow* window){
         int w,h; glfwGetFramebufferSize(window,&w,&h);
-        double sliderWidth=0.1*box_size;
+        var_t sliderWidth=0.1*box_size;
 
         glBegin(GL_QUADS);
         glColor3f(1.0f,1.0f,1.0f);
@@ -127,7 +135,7 @@ void drawSlider(GLFWwindow* window){
 
 int main(int argc, char**argv){
         if(!glfwInit()) return -1;
-        GLFWwindow* win=glfwCreateWindow(800,800,"Quadtree Distance-Based",NULL,NULL);
+        GLFWwindow* win=glfwCreateWindow(800,800,"Laplacian filtering-user input",NULL,NULL);
         if(!win){glfwTerminate();return -1;}
         glfwMakeContextCurrent(win);
         gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -222,24 +230,25 @@ int main(int argc, char**argv){
 
         sweep_controller(distances,frozen);
 
-//        smooth_distance_field(distances);
-//        smooth_distance_field(distances);
-//        smooth_distance_field(distances);
-
         compute_laplacian(distances, laplacian);
-        double sliderWidth=0.1*box_size;
+        var_t sliderWidth=0.1*box_size;
+        var_t power_min=-8.0;
+        var_t power_max=16.0;
+        var_t slider_min=0.5*sliderWidth-0.95*0.5*box_size;
+        var_t slider_max=-0.5*sliderWidth+0.95*0.5*box_size;
+        var_t m=(power_max-power_min)/(slider_max-slider_min);
+        var_t c=(slider_max*power_min-slider_min*power_max)/(slider_max-slider_min);
 
         while(!glfwWindowShouldClose(win)){
-        laplacian_limit=-pow(10.0,(8.0*sliderX+2.0*sliderWidth-2.0*0.95*box_size)/(0.95*box_size-sliderWidth));
+        laplacian_limit=-pow(10.0,m*sliderX+c);
         if(laplacian_limit!=laplacian_limit_old){
-                filter_medial_axis(laplacian, filtered_laplacian,laplacian_limit); //Get thick medial axis by filtering out points with very negative laplacian
+                filter_medial_axis(laplacian, filtered_laplacian,laplacian_limit); //Get thick medial axis
                 laplacian_limit_old=laplacian_limit;
         }
         glClear(GL_COLOR_BUFFER_BIT);
         int w,h; glfwGetFramebufferSize(win,&w,&h);
         glViewport(0,0,w,h);
         glMatrixMode(GL_PROJECTION); glLoadIdentity();
-        float aspect=float(w)/h;
         glOrtho(-0.5*box_size/zoom+camX,0.5*box_size/zoom+camX,
                 -0.5*box_size/zoom+camY,0.5*box_size/zoom+camY,-1,1);
         glMatrixMode(GL_MODELVIEW); glLoadIdentity();
@@ -259,6 +268,34 @@ int main(int argc, char**argv){
                 thin_medial_axis(filtered_laplacian,is_even);
                 is_even=!is_even;
         }
+
+        win=glfwCreateWindow(800,800,"Thinned and filtered axis",NULL,NULL);
+        if(!win){glfwTerminate();return -1;}
+        glfwMakeContextCurrent(win);
+        gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+        glfwSetScrollCallback(win, scroll_callback);
+        glfwSetMouseButtonCallback(win, mouse_button_callback);
+        glfwSetCursorPosCallback(win, cursor_pos_callback);
+
+        while(!glfwWindowShouldClose(win)){
+        glClear(GL_COLOR_BUFFER_BIT);
+        int w,h; glfwGetFramebufferSize(win,&w,&h);
+        glViewport(0,0,w,h);
+        glMatrixMode(GL_PROJECTION); glLoadIdentity();
+        var_t aspect=var_t(w)/h;
+        glOrtho(-0.5*box_size/zoom+camX,0.5*box_size/zoom+camX,
+                -0.5*box_size/zoom+camY,0.5*box_size/zoom+camY,-1,1);
+        glMatrixMode(GL_MODELVIEW); glLoadIdentity();
+
+        drawGrid(filtered_laplacian);
+        drawBoundary(iblines);
+        glfwSwapBuffers(win);
+        glfwPollEvents();
+        if(glfwGetKey(win,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(win,true);
+
+        };
 
         //Write out tree partitions,grid,solution and then free heap-allocated memory
         qt.write(qt);
