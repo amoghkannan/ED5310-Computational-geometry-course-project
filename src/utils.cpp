@@ -40,6 +40,7 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct 
     std::pair<bool,var_t> ans;
     ans.first=false;
     var_t dummy=LARGE;
+    int num_iblines=poly.size();
   
     for(int i=0;i<num_iblines;i++){
         dummy=std::min(dummy,pointToSegmentDistance(b.x,b.y,poly[i])); 
@@ -52,7 +53,7 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct 
     return ans;
 }
 
-void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[]){
+void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[], int body_ID[]){
         std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.5*box.size);
         if(!ans.first) return; // only subdivide near boundary
         if(depth==maxDepth){ //Cell intersects polygon, and is at required resolution; fill exact distance and freeze
@@ -61,6 +62,7 @@ void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t dista
                 cell_ID2=((box.y-0.5*box.size)+0.5*box_size)/delta;
                 frozen[cell_ID1+cell_ID2*(N-1)]=true;
                 distances[cell_ID1+cell_ID2*(N-1)]=ans.second;
+                body_ID[cell_ID1+cell_ID2*(N-1)]=poly[0].body_ID;
                 return;
         }
 
@@ -74,7 +76,7 @@ void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t dista
         
         for(int i=0;i<4;i++){
             Quadtree2* c=new Quadtree2(sub[i],depth+1);
-            c->build(poly,frozen,distances);
+            c->build(poly,frozen,distances,body_ID);
             children.push_back(c);
         }
         return;
@@ -122,7 +124,7 @@ void write_grid(){
         gridfile.close();
 }
 
-void write_soln(var_t distances[], bool filtered_laplacian[],bool frozen[]){
+void write_soln(var_t distances[], var_t laplacian[], int filtered_laplacian[], bool frozen[], int body_ID[]){
 
         std::ofstream solnfile("soln.dat");
         solnfile<<N<<" "<<N<<std::endl;
@@ -130,6 +132,12 @@ void write_soln(var_t distances[], bool filtered_laplacian[],bool frozen[]){
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
                         solnfile<<distances[i+j*(N-1)]<<std::endl;
+                }
+        }
+
+        for(int j=0;j<N-1;j++){
+                for(int i=0;i<N-1;i++){
+                        solnfile<<laplacian[i+j*(N-1)]<<std::endl;
                 }
         }
 
@@ -145,6 +153,11 @@ void write_soln(var_t distances[], bool filtered_laplacian[],bool frozen[]){
                 }
         }
 
+        for(int j=0;j<N-1;j++){
+                for(int i=0;i<N-1;i++){
+                        solnfile<<body_ID[i+j*(N-1)]<<std::endl;
+                }
+        }
 
         solnfile.close();
 

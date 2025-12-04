@@ -10,7 +10,11 @@
 #define SMALL 1E-14
 #define LARGE 1E10
 
-typedef double var_t;
+#ifndef M_PI
+#define M_PI 3.14159265358979323846 
+#endif
+
+typedef float var_t;
 
 extern int num_iblines;
 extern int N;
@@ -49,7 +53,7 @@ struct Quadtree2{
 
     Quadtree2(Box2 b,int d=0):box(b),depth(d){}
 
-    void build(std::vector<struct line>& poly,bool frozen[],var_t distances[]);
+    void build(std::vector<struct line>& poly,bool frozen[],var_t distances[], int body_ID[]);
     void write(Quadtree2& tree);
     void delete_tree(Quadtree2& tree);
 
@@ -57,4 +61,4 @@ struct Quadtree2{
 
 //---------Grid management-------------
 void write_grid();
-void write_soln(var_t distances[],bool filtered_laplacian[],bool frozen[]);
+void write_soln(var_t distances[],var_t laplacian[], int filtered_laplacian[],bool frozen[], int body_ID[]);

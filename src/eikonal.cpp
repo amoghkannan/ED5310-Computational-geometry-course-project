@@ -7,7 +7,7 @@ void sweep_controller(var_t* distances, bool* frozen){
         fast_sweep(distances,frozen,0,N-1,1,N-2,-1,-1);
 }
 
-void fast_sweep(var_t* distances, bool* frozen,int i_min,int i_max,int i_step,int j_min,int j_max,int j_step){
+void fast_sweep(var_t* distances,bool* frozen,int i_min,int i_max,int i_step,int j_min,int j_max,int j_step){
 //i_max/j_max: 1 GREATER than necessary
 
         var_t f,h;
@@ -49,11 +49,26 @@ void fast_sweep(var_t* distances, bool* frozen,int i_min,int i_max,int i_step,in
                         }
 
                         distances[i+j*(N-1)]=std::min(distances[i+j*(N-1)],d_new);
+                        
                         i=i+i_step;
                         
                 }
                 j=j+j_step;
         }
+}
+
+void define_ROI(int curr_body, int* body_ID, var_t* distances, var_t* distances_old){
+        
+        #pragma omp parallel for collapse(2)
+        for(int j=0;j<N-1;j++){
+                for(int i=0;i<N-1;i++){
+                        if(distances_old[i+(N-1)*j]<distances[i+(N-1)*j]){
+                                distances[i+(N-1)*j]=distances_old[i+(N-1)*j];
+                                body_ID[i+(N-1)*j]=curr_body;
+                        }
+                }
+        }
+
 }
 
 void smooth_distance_field(var_t* distances){
@@ -105,19 +120,19 @@ void compute_laplacian(var_t* distances, var_t * laplacian){
 
 }
 
-void filter_medial_axis(var_t* laplacian, bool* filtered_laplacian, var_t laplacian_limit){
+void filter_medial_axis(var_t* laplacian, int* filtered_laplacian, var_t laplacian_limit){
 
         #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
-                        filtered_laplacian[i+(N-1)*j]=(laplacian[i+(N-1)*j]<=laplacian_limit)?true:false;
+                        filtered_laplacian[i+(N-1)*j]=(laplacian[i+(N-1)*j]<=laplacian_limit)?1:0;
                 }
         }
 
 }
 
 //Thinning the medial axis
-std::array<int,4> thinning_heuristics(int idx, int idy,bool* filtered_laplacian,bool is_even){
+std::array<int,4> thinning_heuristics(int idx, int idy,int* filtered_laplacian,bool is_even){
        bool x[9];
        int incs_x[]={0,-1,0,1,1,1,0,-1,-1};
        int incs_y[]={0,1,1,1,0,-1,-1,-1,0};
@@ -133,7 +148,7 @@ std::array<int,4> thinning_heuristics(int idx, int idy,bool* filtered_laplacian,
                temp_incs_y=(idy+incs_y[i])>N-1?0:incs_y[i];
                temp_incs_y=(idy+incs_y[i])<0?0:incs_y[i];
 
-               x[i]=filtered_laplacian[idx+temp_incs_x+(N-1)*(idy+temp_incs_y)];
+               x[i]=filtered_laplacian[idx+temp_incs_x+(N-1)*(idy+temp_incs_y)]==1?true:false;
        }
 
        ans[0]=(int)((!x[2]) && (x[3] || x[4]))+\
@@ -162,7 +177,7 @@ std::array<int,4> thinning_heuristics(int idx, int idy,bool* filtered_laplacian,
        
 }
 
-void thin_medial_axis(bool* filtered_laplacian, bool is_even){
+void thin_medial_axis(int* filtered_laplacian, bool is_even){
 
         bool C1,C2,C3;
         std::array<int,4> heuristics;
@@ -184,8 +199,8 @@ void thin_medial_axis(bool* filtered_laplacian, bool is_even){
         #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
-                        if(marked[i+j*(N-1)]){
-                                filtered_laplacian[i+j*(N-1)]=false;
+                        if(marked[i+j*(N-1)] || i==0 || i==N-2 || j==0 || j==N-2){
+                                filtered_laplacian[i+j*(N-1)]=0;
                         }
                 }
         }

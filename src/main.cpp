@@ -4,6 +4,7 @@
 #include<fstream>
 #include"utils.h"
 #include"eikonal.h"
+#include"postprocessing.h"
 #include"glad.h"
 #include"glfw3.h"
 
@@ -11,18 +12,20 @@ char ibfile_name[]="ib.dat";
 int num_iblines;
 int N;
 int maxDepth;
+std::vector<struct medial_node*> disjoint_axis_tree;
+
 var_t box_size;
 var_t delta;
-var_t camX=0.0, camY=0.0, zoom=1.0;
+double camX=0.0, camY=0.0, zoom=1.0;
 bool dragging=false;
 bool slider_dragging=false;
-var_t lastX, lastY;
-var_t sliderX=0.0;
+double lastX, lastY;
+double sliderX=0.0;
 
 var_t laplacian_limit=-1.0;
 var_t laplacian_limit_old=laplacian_limit;
 
-bool sliderHover(var_t xpos, var_t ypos){
+bool sliderHover(double xpos, double ypos){
         var_t x1, x2, y1, y2;
         var_t sliderWidth=0.1*box_size;
 
@@ -40,7 +43,7 @@ bool sliderHover(var_t xpos, var_t ypos){
 
 }
 
-void scroll_callback(GLFWwindow* window, var_t xoffset, var_t yoffset){
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
     zoom *= (yoffset>0?1.1f:0.9f);
 }
 
@@ -60,7 +63,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 }
 
-void cursor_pos_callback(GLFWwindow* window, var_t xpos, var_t ypos){
+void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos){
     if(dragging || slider_dragging){
         int w,h; glfwGetFramebufferSize(window,&w,&h);
         var_t dx=(xpos-lastX)/w*box_size/zoom;
@@ -89,11 +92,11 @@ void drawBoundary(std::vector<struct line>& shape){
     glEnd();
 }
 
-void drawGrid(bool* filtered_laplacian){
+void drawGrid(int* filtered_laplacian){
         glBegin(GL_QUADS);
         for(int j=0;j<N;j++){
                 for(int i=0;i<N;i++){
-                        if(filtered_laplacian[i+(N-1)*j]){
+                        if(filtered_laplacian[i+(N-1)*j]==1){
                                 glColor3f(1.0f,0.0f,0.0f);
                         }
                         else{
@@ -152,88 +155,100 @@ int main(int argc, char**argv){
         delta=box_size/(N-1);
         bool frozen[(N-1)*(N-1)];
         var_t distances[(N-1)*(N-1)]; //Distance array used for each object
+        var_t distances_old[(N-1)*(N-1)]; //Distance array used for each object
         var_t laplacian[(N-1)*(N-1)];
-        bool filtered_laplacian[(N-1)*(N-1)];
+        int filtered_laplacian[(N-1)*(N-1)];
+        int body_ID[(N-1)*(N-1)];
 
         #pragma omp parallel for collapse(2)
         for(int j=0;j<N-1;j++){
                 for(int i=0;i<N-1;i++){
                         distances[i+j*(N-1)]=LARGE;
+                        distances_old[i+j*(N-1)]=LARGE;
                         frozen[i+j*(N-1)]=false;
+                        body_ID[i+j*(N-1)]=-1;
                 }
         }
+
+//        //For the walls
+//
+//        //Upper wall
+//        #pragma omp parallel for collapse(2)
+//        for(int j=N-2;j<N-1;j++){
+//                for(int i=0;i<N-1;i++){
+//                        distances[i+j*(N-1)]=0.5*delta;
+//                        frozen[i+j*(N-1)]=true;
+//                }
+//        }
+//
+//        //Lower wall
+//        #pragma omp parallel for collapse(2)
+//        for(int j=0;j<1;j++){
+//                for(int i=0;i<N-1;i++){
+//                        distances[i+j*(N-1)]=0.5*delta;
+//                        frozen[i+j*(N-1)]=true;
+//                }
+//        }
+//
+//        //Left wall
+//        #pragma omp parallel for collapse(2)
+//        for(int j=0;j<N-1;j++){
+//                for(int i=0;i<1;i++){
+//                        distances[i+j*(N-1)]=0.5*delta;
+//                        frozen[i+j*(N-1)]=true;
+//                }
+//        }
+//
+//        //Right wall
+//        #pragma omp parallel for collapse(2)
+//        for(int j=0;j<N-1;j++){
+//                for(int i=N-2;i<N-1;i++){
+//                        distances[i+j*(N-1)]=0.5*delta;
+//                        frozen[i+j*(N-1)]=true;
+//                }
+//        }
+//
 
         std::ifstream ibfile(ibfile_name);
         int num_iblines_temp,ib_count;
         num_iblines=0;
-        ib_count=0;
 
+        std::vector<std::vector<struct line>>iblines_net;
         std::vector<struct line>iblines;
         
         for(int k=0;k<n_bodies;k++){
                 ibfile>>num_iblines_temp;
                 num_iblines=num_iblines+num_iblines_temp;
 
-                iblines.resize(num_iblines);
+                iblines.resize(num_iblines_temp);
 
                 for(int i=0;i<num_iblines_temp;i++){
-                        ibfile>>iblines[ib_count].st[0]>>iblines[ib_count].st[1]>>iblines[ib_count].en[0]>>
-                        iblines[ib_count].en[1]>>iblines[ib_count].normal[0]>>iblines[ib_count].normal[1];
-                        iblines[ib_count].body_ID=k;
-                        ib_count=ib_count+1;
+                        ibfile>>iblines[i].st[0]>>iblines[i].st[1]>>iblines[i].en[0]>>
+                        iblines[i].en[1]>>iblines[i].normal[0]>>iblines[i].normal[1];
+                        iblines[i].body_ID=k;
+                }
+                
+                iblines_net.push_back(iblines);
+                Quadtree2 qt(Box2(0.0f,0.0f,box_size),0);
+                qt.build(iblines,frozen,distances_old,body_ID);
+                sweep_controller(distances_old,frozen);
+                define_ROI(k, body_ID, distances,distances_old);
+                qt.delete_tree(qt);
+                #pragma omp parallel for collapse(2)
+                for(int j=0;j<N-1;j++){
+                        for(int i=0;i<N-1;i++){
+                                distances_old[i+j*(N-1)]=LARGE;
+                                frozen[i+j*(N-1)]=false;
+                        }
                 }
 
         }
        
-        //For the immersed bodies
-
-        Quadtree2 qt(Box2(0.0f,0.0f,box_size),0);
-        qt.build(iblines,frozen,distances);
-
-        //For the walls
-
-        //Upper wall
-        #pragma omp parallel for collapse(2)
-        for(int j=N-2;j<N-1;j++){
-                for(int i=0;i<N-1;i++){
-                        distances[i+j*(N-1)]=0.5*delta;
-                        frozen[i+j*(N-1)]=true;
-                }
-        }
-
-        //Lower wall
-        #pragma omp parallel for collapse(2)
-        for(int j=0;j<1;j++){
-                for(int i=0;i<N-1;i++){
-                        distances[i+j*(N-1)]=0.5*delta;
-                        frozen[i+j*(N-1)]=true;
-                }
-        }
-
-        //Left wall
-        #pragma omp parallel for collapse(2)
-        for(int j=0;j<N-1;j++){
-                for(int i=0;i<1;i++){
-                        distances[i+j*(N-1)]=0.5*delta;
-                        frozen[i+j*(N-1)]=true;
-                }
-        }
-
-        //Right wall
-        #pragma omp parallel for collapse(2)
-        for(int j=0;j<N-1;j++){
-                for(int i=N-2;i<N-1;i++){
-                        distances[i+j*(N-1)]=0.5*delta;
-                        frozen[i+j*(N-1)]=true;
-                }
-        }
-
-        sweep_controller(distances,frozen);
-
         compute_laplacian(distances, laplacian);
+
         var_t sliderWidth=0.1*box_size;
-        var_t power_min=-8.0;
-        var_t power_max=16.0;
+        var_t power_min=1.0;
+        var_t power_max=4.0;
         var_t slider_min=0.5*sliderWidth-0.95*0.5*box_size;
         var_t slider_max=-0.5*sliderWidth+0.95*0.5*box_size;
         var_t m=(power_max-power_min)/(slider_max-slider_min);
@@ -255,7 +270,9 @@ int main(int argc, char**argv){
 
         drawGrid(filtered_laplacian);
         drawSlider(win);
-        drawBoundary(iblines);
+        for(int i=0;i<iblines_net.size();i++){
+                drawBoundary(iblines_net[i]);
+        }
         glfwSwapBuffers(win);
         glfwPollEvents();
         if(glfwGetKey(win,GLFW_KEY_ESCAPE)==GLFW_PRESS)
@@ -269,18 +286,18 @@ int main(int argc, char**argv){
                 is_even=!is_even;
         }
 
-        win=glfwCreateWindow(800,800,"Thinned and filtered axis",NULL,NULL);
-        if(!win){glfwTerminate();return -1;}
-        glfwMakeContextCurrent(win);
+        GLFWwindow* win1=glfwCreateWindow(800,800,"Thinned and filtered axis",NULL,NULL);
+        if(!win1){glfwTerminate();return -1;}
+        glfwMakeContextCurrent(win1);
         gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-        glfwSetScrollCallback(win, scroll_callback);
-        glfwSetMouseButtonCallback(win, mouse_button_callback);
-        glfwSetCursorPosCallback(win, cursor_pos_callback);
+        glfwSetScrollCallback(win1, scroll_callback);
+        glfwSetMouseButtonCallback(win1, mouse_button_callback);
+        glfwSetCursorPosCallback(win1, cursor_pos_callback);
 
-        while(!glfwWindowShouldClose(win)){
+        while(!glfwWindowShouldClose(win1)){
         glClear(GL_COLOR_BUFFER_BIT);
-        int w,h; glfwGetFramebufferSize(win,&w,&h);
+        int w,h; glfwGetFramebufferSize(win1,&w,&h);
         glViewport(0,0,w,h);
         glMatrixMode(GL_PROJECTION); glLoadIdentity();
         var_t aspect=var_t(w)/h;
@@ -289,19 +306,21 @@ int main(int argc, char**argv){
         glMatrixMode(GL_MODELVIEW); glLoadIdentity();
 
         drawGrid(filtered_laplacian);
-        drawBoundary(iblines);
-        glfwSwapBuffers(win);
+        for(int i=0;i<iblines_net.size();i++){
+                drawBoundary(iblines_net[i]);
+        }
+        glfwSwapBuffers(win1);
         glfwPollEvents();
-        if(glfwGetKey(win,GLFW_KEY_ESCAPE)==GLFW_PRESS)
-            glfwSetWindowShouldClose(win,true);
+        if(glfwGetKey(win1,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(win1,true);
 
         };
 
+        generate_medial_tree(filtered_laplacian,disjoint_axis_tree);
+        std::cout<<disjoint_axis_tree.size()<<std::endl;
         //Write out tree partitions,grid,solution and then free heap-allocated memory
-        qt.write(qt);
         write_grid();
-        write_soln(distances,filtered_laplacian,frozen);
-        qt.delete_tree(qt);
+        write_soln(distances,laplacian,filtered_laplacian,frozen,body_ID);
         glfwTerminate();
         return 0;
 }

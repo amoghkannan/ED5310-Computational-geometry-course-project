@@ -57,7 +57,9 @@ N=int(inline[0])
 
 distances=np.zeros((N-1,N-1))
 laplacian=np.zeros((N-1,N-1))
+filtered_laplacian=np.zeros((N-1,N-1))
 frozen=np.zeros((N-1,N-1))
+body_ID=np.ones((N-1,N-1))*(-1)
 
 for j in range(0,N-1):
     for i in range(0,N-1):
@@ -72,34 +74,45 @@ for j in range(0,N-1):
 for j in range(0,N-1):
     for i in range(0,N-1):
          inline=solnfile.readline().strip().split()
+         filtered_laplacian[i,j]=float(inline[0])
+
+for j in range(0,N-1):
+    for i in range(0,N-1):
+         inline=solnfile.readline().strip().split()
          frozen[i,j]=float(inline[0])
+
+for j in range(0,N-1):
+    for i in range(0,N-1):
+         inline=solnfile.readline().strip().split()
+         body_ID[i,j]=int(inline[0])
+
 
 X_contour=0.25*(X[0:N-1,0:N-1]+X[1:N,0:N-1]+X[0:N-1,1:N]+X[1:N,1:N])
 Y_contour=0.25*(Y[0:N-1,0:N-1]+Y[1:N,0:N-1]+Y[0:N-1,1:N]+Y[1:N,1:N])
 
-plt.figure(1)
-plt.contourf(X_contour,Y_contour,distances)
-for k in range(0,num_bodies):
-        plt.plot(ib_x_fin[k],ib_y_fin[k],'k',linewidth=2)
-plt.colorbar()
-plt.grid()
-plt.title("Distance field")
-plt.show()
+#plt.figure(1)
+#plt.contourf(X_contour,Y_contour,distances)
+#for k in range(0,num_bodies):
+#        plt.plot(ib_x_fin[k],ib_y_fin[k],'k',linewidth=2)
+#plt.colorbar()
+#plt.grid()
+#plt.title("Distance field")
+#plt.show()
 
 plt.figure(2)
 for k in range(0,num_bodies):
         plt.plot(ib_x_fin[k],ib_y_fin[k],'k',linewidth=2)
-plt.pcolor(X_contour,Y_contour,laplacian)
+plt.pcolor(X_contour,Y_contour,body_ID)
 plt.colorbar()
 plt.grid()
 plt.title("Laplacian")
 plt.show()
 
-plt.figure(3)
-for k in range(0,num_bodies):
-        plt.plot(ib_x_fin[k],ib_y_fin[k],'k')
-plt.pcolor(X_contour,Y_contour,frozen)
-plt.colorbar()
-plt.grid()
-plt.title("Frozen cells")
-plt.show()
+#plt.figure(3)
+#for k in range(0,num_bodies):
+#        plt.plot(ib_x_fin[k],ib_y_fin[k],'k')
+#plt.pcolor(X_contour,Y_contour,frozen)
+#plt.colorbar()
+#plt.grid()
+#plt.title("Frozen cells")
+#plt.show()
