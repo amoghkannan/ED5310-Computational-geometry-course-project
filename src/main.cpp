@@ -13,6 +13,7 @@ int num_iblines;
 int N;
 int maxDepth;
 std::vector<struct medial_node*> disjoint_axis_tree;
+bool visited_global=false;
 
 var_t box_size;
 var_t delta;
@@ -153,7 +154,7 @@ int main(int argc, char**argv){
         n_bodies=std::atoi(argv[3]);
         N=std::pow(2,maxDepth)+1; 
         delta=box_size/(N-1);
-        bool frozen[(N-1)*(N-1)];
+        int frozen[(N-1)*(N-1)];
         var_t distances[(N-1)*(N-1)]; //Distance array used for each object
         var_t distances_old[(N-1)*(N-1)]; //Distance array used for each object
         var_t laplacian[(N-1)*(N-1)];
@@ -165,7 +166,7 @@ int main(int argc, char**argv){
                 for(int i=0;i<N-1;i++){
                         distances[i+j*(N-1)]=LARGE;
                         distances_old[i+j*(N-1)]=LARGE;
-                        frozen[i+j*(N-1)]=false;
+                        frozen[i+j*(N-1)]=0;
                         body_ID[i+j*(N-1)]=-1;
                 }
         }
@@ -230,7 +231,7 @@ int main(int argc, char**argv){
                 
                 iblines_net.push_back(iblines);
                 Quadtree2 qt(Box2(0.0f,0.0f,box_size),0);
-                qt.build(iblines,frozen,distances_old,body_ID);
+                qt.build(iblines,frozen,distances_old,body_ID,0.5*box_size);
                 sweep_controller(distances_old,frozen);
                 define_ROI(k, body_ID, distances,distances_old);
                 qt.delete_tree(qt);
@@ -238,7 +239,7 @@ int main(int argc, char**argv){
                 for(int j=0;j<N-1;j++){
                         for(int i=0;i<N-1;i++){
                                 distances_old[i+j*(N-1)]=LARGE;
-                                frozen[i+j*(N-1)]=false;
+                                frozen[i+j*(N-1)]=0;
                         }
                 }
 
@@ -316,8 +317,32 @@ int main(int argc, char**argv){
 
         };
 
-        generate_medial_tree(filtered_laplacian,disjoint_axis_tree);
-        std::cout<<disjoint_axis_tree.size()<<std::endl;
+        generate_medial_tree(filtered_laplacian,body_ID,disjoint_axis_tree,0);
+        clean_tree(disjoint_axis_tree);
+        reconnect_tree(disjoint_axis_tree,body_ID);
+
+        std::cout<<"Final node count on medial axis: "<<disjoint_axis_tree.size()<<std::endl;
+
+        for(int k=0;k<n_bodies;k++){
+                Quadtree2 qt(Box2(0.0f,0.0f,box_size),0);
+                qt.build(iblines_net[k],frozen,distances_old,body_ID,0.5*box_size);
+                qt.delete_tree(qt);
+        }
+        
+        is_even=true;
+        for(int i=0; i<100;i++){
+                thin_medial_axis(frozen,is_even);
+                is_even=!is_even;
+        }
+
+        join_ib_to_axis(disjoint_axis_tree,frozen,body_ID);
+        clean_tree(disjoint_axis_tree);
+        reconnect_tree(disjoint_axis_tree,body_ID);
+
+        classify_medial_nodes(disjoint_axis_tree,distances,frozen);
+        partition_domain(disjoint_axis_tree,distances,frozen,body_ID);
+        test_tree(disjoint_axis_tree,distances);
+
         //Write out tree partitions,grid,solution and then free heap-allocated memory
         write_grid();
         write_soln(distances,laplacian,filtered_laplacian,frozen,body_ID);

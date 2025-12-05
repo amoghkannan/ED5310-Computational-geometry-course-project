@@ -31,13 +31,14 @@ buildrunplot:
 	bin/sim.exe ${domain_size} ${max_depth} ${n_bodies}  #Domain size,maximum depth,number of bodies
 	#python3 ib_plotter.py ${n_bodies} #Number of bodies
 	#python3 quad_plotter.py ${n_bodies}
-	rm -rf tree.dat
 
 debug:
-	g++ ${DEFAULTFLAGS} -c src/glad.c -o glad.o	
+	g++ ${DEBUGFLAGS} -c src/glad.c -o glad.o	
 	g++ ${DEBUGFLAGS} -c src/utils.cpp -o utils.o
 	g++ ${DEBUGFLAGS} -c src/eikonal.cpp -o eikonal.o
+	g++ ${DEBUGFLAGS} -c src/postprocessing.cpp -o postprocessing.o
 	g++ ${DEBUGFLAGS} -c src/main.cpp -o main.o
-	g++ ${DEBUGFLAGS} -o sim.exe main.o eikonal.o utils.o glad.o -ldl -lglfw3 -lpthread
+	g++ ${DEBUGFLAGS} -o sim.exe main.o postprocessing.o eikonal.o utils.o glad.o -ldl -lglfw3 -lpthread
 	mv sim.exe bin/
-	mv *.o Modules/
+	mv *.o  Modules/
+	bin/sim.exe ${domain_size} ${max_depth} ${n_bodies}  #Domain size,maximum depth,number of bodies

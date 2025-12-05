@@ -1,13 +1,13 @@
 #include"eikonal.h"
 
-void sweep_controller(var_t* distances, bool* frozen){
+void sweep_controller(var_t* distances, int* frozen){
         fast_sweep(distances,frozen,0,N-1,1,0,N-1,1);
         fast_sweep(distances,frozen,N-2,-1,-1,0,N-1,1);
         fast_sweep(distances,frozen,N-2,-1,-1,N-2,-1,-1);
         fast_sweep(distances,frozen,0,N-1,1,N-2,-1,-1);
 }
 
-void fast_sweep(var_t* distances,bool* frozen,int i_min,int i_max,int i_step,int j_min,int j_max,int j_step){
+void fast_sweep(var_t* distances,int* frozen,int i_min,int i_max,int i_step,int j_min,int j_max,int j_step){
 //i_max/j_max: 1 GREATER than necessary
 
         var_t f,h;
@@ -24,7 +24,7 @@ void fast_sweep(var_t* distances,bool* frozen,int i_min,int i_max,int i_step,int
         while(j!=j_max){
                 i=i_min;
                 while(i!=i_max){
-                        if(frozen[i+j*(N-1)]){
+                        if(frozen[i+j*(N-1)]==1){
                                 i=i+i_step;
                                 continue;
                         }

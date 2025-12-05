@@ -1,8 +1,8 @@
 #pragma once
 #include"utils.h"
 
-void sweep_controller(var_t* distances, bool* frozen);
-void fast_sweep(var_t* distances, bool* frozen,int,int,int,int,int,int);
+void sweep_controller(var_t* distances, int* frozen);
+void fast_sweep(var_t* distances, int* frozen,int,int,int,int,int,int);
 void define_ROI(int curr_body, int* body_ID, var_t* distances, var_t* distances_old);
 
 //Obtaining rough medial axis

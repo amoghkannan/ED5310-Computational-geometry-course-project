@@ -6,6 +6,7 @@
 #include<iostream>
 #include<omp.h>
 #include<array>
+#include<algorithm>
 
 #define SMALL 1E-14
 #define LARGE 1E10
@@ -53,7 +54,7 @@ struct Quadtree2{
 
     Quadtree2(Box2 b,int d=0):box(b),depth(d){}
 
-    void build(std::vector<struct line>& poly,bool frozen[],var_t distances[], int body_ID[]);
+    void build(std::vector<struct line>& poly,int frozen[],var_t distances[], int body_ID[], var_t errf);
     void write(Quadtree2& tree);
     void delete_tree(Quadtree2& tree);
 
@@ -61,4 +62,4 @@ struct Quadtree2{
 
 //---------Grid management-------------
 void write_grid();
-void write_soln(var_t distances[],var_t laplacian[], int filtered_laplacian[],bool frozen[], int body_ID[]);
+void write_soln(var_t distances[],var_t laplacian[], int filtered_laplacian[],int frozen[], int body_ID[]);

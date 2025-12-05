@@ -53,14 +53,14 @@ std::pair<bool,var_t> boxIntersectsPolygonDist(const Box2& b,std::vector<struct 
     return ans;
 }
 
-void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t distances[], int body_ID[]){
-        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,0.5*box.size);
+void Quadtree2:: build(std::vector<struct line>& poly,int frozen[], var_t distances[], int body_ID[], var_t errf){
+        std::pair<bool,var_t>ans=boxIntersectsPolygonDist(box, poly,errf);
         if(!ans.first) return; // only subdivide near boundary
         if(depth==maxDepth){ //Cell intersects polygon, and is at required resolution; fill exact distance and freeze
                 int cell_ID1,cell_ID2;
                 cell_ID1=((box.x-0.5*box.size)+0.5*box_size)/delta;
                 cell_ID2=((box.y-0.5*box.size)+0.5*box_size)/delta;
-                frozen[cell_ID1+cell_ID2*(N-1)]=true;
+                frozen[cell_ID1+cell_ID2*(N-1)]=1;
                 distances[cell_ID1+cell_ID2*(N-1)]=ans.second;
                 body_ID[cell_ID1+cell_ID2*(N-1)]=poly[0].body_ID;
                 return;
@@ -76,7 +76,7 @@ void Quadtree2:: build(std::vector<struct line>& poly,bool frozen[], var_t dista
         
         for(int i=0;i<4;i++){
             Quadtree2* c=new Quadtree2(sub[i],depth+1);
-            c->build(poly,frozen,distances,body_ID);
+            c->build(poly,frozen,distances,body_ID,0.5*errf);
             children.push_back(c);
         }
         return;
@@ -124,7 +124,7 @@ void write_grid(){
         gridfile.close();
 }
 
-void write_soln(var_t distances[], var_t laplacian[], int filtered_laplacian[], bool frozen[], int body_ID[]){
+void write_soln(var_t distances[], var_t laplacian[], int filtered_laplacian[], int frozen[], int body_ID[]){
 
         std::ofstream solnfile("soln.dat");
         solnfile<<N<<" "<<N<<std::endl;
